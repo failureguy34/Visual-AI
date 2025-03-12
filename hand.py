@@ -15,11 +15,8 @@ mp_draw = mp.solutions.drawing_utils
 screen_width, screen_height = pyautogui.size()
 
 # Variables para controlar desplazamiento relativo
-prev_x, prev_y = 0, 0
 cursor_x, cursor_y = screen_width // 2, screen_height // 2
-
-# Variables para el arrastre (drag)
-dragging = False
+clicking = False
 
 # Captura de video
 cap = cv2.VideoCapture(0)
@@ -43,35 +40,30 @@ while cap.isOpened():
 
             # Obtener coordenadas de los dedos
             index_finger = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-            thumb_finger = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
+            thumb = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
+            middle_finger = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
 
             # Convertir a coordenadas de pantalla
             index_x, index_y = int(index_finger.x * w), int(index_finger.y * h)
-            thumb_x, thumb_y = int(thumb_finger.x * w), int(thumb_finger.y * h)
 
             # Calcular desplazamiento relativo
-            dx = index_x - prev_x
-            dy = index_y - prev_y
+            cursor_x = np.clip(cursor_x + (index_x - w // 2) * 0.5, 0, screen_width)
+            cursor_y = np.clip(cursor_y + (index_y - h // 2) * 0.5, 0, screen_height)
 
-            # Actualizar posición del cursor (permitiendo arrastre más allá de los límites de la cámara)
-            cursor_x = np.clip(cursor_x + dx * 2, 0, screen_width)
-            cursor_y = np.clip(cursor_y + dy * 2, 0, screen_height)
+            pyautogui.moveTo(cursor_x, cursor_y)
 
-            pyautogui.moveTo(cursor_x, cursor_y, duration=0.1)
+            # Calcular distancia entre dedos para detectar click (índice + pulgar)
+            thumb_index_dist = np.linalg.norm(np.array([thumb.x, thumb.y]) - np.array([index_finger.x, index_finger.y]))
+            thumb_middle_dist = np.linalg.norm(np.array([thumb.x, thumb.y]) - np.array([middle_finger.x, middle_finger.y]))
 
-            # Verificar distancia entre pulgar e índice (para clic izquierdo o arrastre)
-            distance = np.sqrt((index_x - thumb_x) ** 2 + (index_y - thumb_y) ** 2)
-            if distance < 40:
-                if not dragging:
+            if thumb_index_dist < 0.05:  # Click izquierdo (índice + pulgar)
+                if not clicking:
                     pyautogui.mouseDown()
-                    dragging = True
+                    clicking = True
             else:
-                if dragging:
+                if clicking:
                     pyautogui.mouseUp()
-                    dragging = False
-
-            # Actualizar las coordenadas previas
-            prev_x, prev_y = index_x, index_y
+                    clicking = False
 
     # Mostrar el video
     cv2.imshow('Hand Mouse', frame)
