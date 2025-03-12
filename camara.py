@@ -12,7 +12,6 @@ def decir(texto):
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
 
-
 def eye_aspect_ratio(eye):
     A = np.linalg.norm(eye[1] - eye[5])
     B = np.linalg.norm(eye[2] - eye[4])
@@ -20,7 +19,9 @@ def eye_aspect_ratio(eye):
     return (A + B) / (2.0 * C)
 
 EAR_THRESHOLD = 0.25
+CLOSURE_FRAMES_THRESHOLD = 3
 
+# Capturadora de video
 cap = cv2.VideoCapture(1)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -48,21 +49,24 @@ while True:
         left_ear = eye_aspect_ratio(left_eye)
         right_ear = eye_aspect_ratio(right_eye)
 
-        if left_ear < EAR_THRESHOLD and right_ear >= EAR_THRESHOLD:
+        if left_ear < EAR_THRESHOLD and right_ear >= EAR_THRESHOLD:  # Ceja izquierda
             decir("Sí")
-            cv2.putText(frame, 'SI', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        elif right_ear < EAR_THRESHOLD and left_ear >= EAR_THRESHOLD:
+            cv2.putText(frame, 'SI (Ojo izquierdo)', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        elif right_ear < EAR_THRESHOLD and left_ear >= EAR_THRESHOLD:  # Ceja derecha
             decir("No")
-            cv2.putText(frame, 'NO', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        
-        if left_ear < EAR_THRESHOLD and right_ear < EAR_THRESHOLD:
-            continue
+            cv2.putText(frame, 'NO (Ojo derecho)', (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
+        if left_ear < EAR_THRESHOLD * 0.8 and right_ear < EAR_THRESHOLD * 0.8:  # Movimiento rápido de cejas
+            decir("Hola")
+            cv2.putText(frame, 'HOLA (Movimiento rápido de cejas)', (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+
+        # Dibujar ojos
         cv2.polylines(frame, [left_eye], True, (255, 0, 0), 1)
         cv2.polylines(frame, [right_eye], True, (255, 0, 0), 1)
 
     cv2.imshow('Detector de Ojos', frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord('q') or key == 27:  # 27 es la tecla ESC
         break
 
 cap.release()
